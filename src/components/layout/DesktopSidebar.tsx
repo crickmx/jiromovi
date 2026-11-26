@@ -3,11 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronRight,
-  LayoutGrid,
   Pin,
   PinOff,
   LogOut,
   Star,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -26,7 +26,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { NotificationBell } from '../NotificationBell';
 import { ThemeToggle } from '../ThemeToggle';
 import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
-import { NavigationPanel } from '../navigation/NavigationPanel';
 
 const BADGE_COLORS: Record<string, string> = {
   amber: 'bg-amber-500 text-white',
@@ -37,8 +36,6 @@ const BADGE_COLORS: Record<string, string> = {
 };
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-neutral-900 text-white border-0 rounded-none shadow-e1 px-2.5 py-1.5";
-const MAX_SIDEBAR_ITEMS = 12;
-const PINNED_KEY = 'movi:sidebar_pinned';
 const FAVORITOS_ABIERTO_KEY = 'movi:favoritos_abierto';
 
 const WORKSPACE_HUB_ROUTES: Record<string, string> = {
@@ -69,7 +66,6 @@ export function DesktopSidebar({
   isPinned,
   onTogglePin,
   workspace,
-  activeItem: _activeItem,
   userRole,
   usuario,
   onSignOut,
@@ -91,36 +87,58 @@ export function DesktopSidebar({
   // La barra está expandida si está fijada por el usuario O si tiene el mouse encima
   const isExpanded = isPinned || isHovered;
 
-  // Acordeones abiertos
-  const [openWorkspaces, setOpenWorkspaces] = useState<Record<string, boolean>>(() => {
-    if (workspace) return { [workspace.id]: true };
-    return {};
-  });
+  // Panel flotante (flyout) que se abre a la DERECHA de la barra al pasar el cursor
+  // sobre una sección. Sustituye —solo para probar— al acordeón que empujaba hacia abajo
+  // los renglones de abajo. El estado es temporal: vive mientras dura el cursor.
+  const [flyout, setFlyout] = useState<{ ws: WorkspaceDefinition; top: number; alto: number } | null>(null);
+  const [flyoutFijo, setFlyoutFijo] = useState(false);
+  const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contenedorRef = useRef<HTMLDivElement>(null);
 
-  // Acordeón abierto TEMPORALMENTE por hover: se ve su contenido al pasar el cursor
-  // y vuelve a su estado normal (abierto a mano o cerrado) cuando el cursor sale.
-  const [acordeonHover, setAcordeonHover] = useState<string | null>(null);
+  const cancelarCierreFlyout = () => {
+    if (flyoutTimer.current) { clearTimeout(flyoutTimer.current); flyoutTimer.current = null; }
+  };
 
-  // Abrir al pasar el cursor sobre el encabezado (o sobre sus propios sub-items,
-  // para que el acordeón no se cierre al bajar hacia el contenido).
-  const hoverAcordeon = (id: string) => () => setAcordeonHover(id);
-  const salirAcordeon = (id: string) => () =>
-    setAcordeonHover(prev => (prev === id ? null : prev));
+  const abrirFlyout = (ws: WorkspaceDefinition) => (e: React.MouseEvent<HTMLElement>) => {
+    cancelarCierreFlyout();
+    const caja = contenedorRef.current;
+    const fila = (e.currentTarget as HTMLElement).closest('[data-ws-row]') as HTMLElement | null;
+    const r = (fila ?? (e.currentTarget as HTMLElement)).getBoundingClientRect();
+    const top = caja ? r.top - caja.getBoundingClientRect().top : r.top;
+    const vh = window.innerHeight || 800;
+    // Nunca se sale por abajo: el alto se recorta a lo que queda de pantalla.
+    const alto = Math.max(220, Math.min(vh * 0.72, vh - Math.max(8, top) - 16));
+    setFlyout({ ws, top: Math.max(8, top), alto });
+  };
+
+  const cerrarFlyoutAhora = () => { cancelarCierreFlyout(); setFlyout(null); setFlyoutFijo(false); };
+
+  const programarCierreFlyout = () => {
+    cancelarCierreFlyout();
+    if (flyoutFijo) return;
+    flyoutTimer.current = setTimeout(() => setFlyout(null), 140);
+  };
+
+  // Esc cierra el panel fijado; un clic fuera también.
+  useEffect(() => {
+    if (!flyout) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (flyoutTimer.current) clearTimeout(flyoutTimer.current); setFlyout(null); setFlyoutFijo(false); } };
+    const onDown = (e: MouseEvent) => {
+      const caja = contenedorRef.current;
+      if (caja && !caja.contains(e.target as Node)) { setFlyout(null); setFlyoutFijo(false); }
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [flyout]);
 
   // Favoritos: abierto siempre por default; si el usuario lo cierra, se respeta hasta que lo reabra.
   const [favoritosAbierto, setFavoritosAbierto] = useState<boolean>(() => {
     try { return localStorage.getItem(FAVORITOS_ABIERTO_KEY) !== '0'; } catch { return true; }
   });
-
-  // Modal flyout para módulos extensos (ej. Admin con 26 items)
-  const [panelWorkspace, setPanelWorkspace] = useState<WorkspaceDefinition | null>(null);
-
-  // Mantener abierto automáticamente el espacio activo
-  useEffect(() => {
-    if (workspace) {
-      setOpenWorkspaces(prev => ({ ...prev, [workspace.id]: true }));
-    }
-  }, [workspace]);
 
   // Manejadores de hover con debounce suave para evitar parpadeos
   const handleMouseEnter = () => {
@@ -141,11 +159,6 @@ export function DesktopSidebar({
     if (!isPinned) {
       setIsHovered(false);
     }
-  };
-
-  const toggleAccordion = (wsId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOpenWorkspaces(prev => ({ ...prev, [wsId]: !prev[wsId] }));
   };
 
   const getInitials = () => {
@@ -183,6 +196,20 @@ export function DesktopSidebar({
     }
     return out;
   };
+
+  // Los mismos items, pero conservando los grupos (para el panel flotante).
+  const gruposVisiblesDe = (ws: WorkspaceDefinition) =>
+    getResolvedItems(ws)
+      .map(g => ({
+        id: g.grupo?.id ?? null,
+        nombre: g.grupo?.nombre ?? null,
+        items: g.items
+          .filter(e => e.kind === 'item')
+          .map(e => (e.kind === 'item' ? e.item : null))
+          .filter((x): x is WorkspaceNavItem => !!x)
+          .filter(item => isItemVisible(item, userRole) && (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)),
+      }))
+      .filter(g => g.items.length > 0);
 
   // Favoritos que este usuario sí puede ver, en el orden en que los marcó.
   // Un favorito de un módulo al que ya no tiene acceso simplemente no aparece.
@@ -261,8 +288,8 @@ export function DesktopSidebar({
     });
   };
 
-  // Los favoritos también se despliegan mientras el cursor está encima.
-  const favoritosVisibles = favoritosAbierto || acordeonHover === 'favoritos';
+  // Favoritos es su propia lista corta: se abre/cierra solo con clic (no empuja por hover).
+  const favoritosVisibles = favoritosAbierto;
 
   const seccionFavoritos = itemsFavoritos.length === 0 ? null : !isExpanded ? (
     // Menú angosto: la estrella abre/cierra, y abierto muestra el ícono de cada favorito.
@@ -312,8 +339,6 @@ export function DesktopSidebar({
     <div
       key="favoritos"
       className="space-y-0.5"
-      onMouseEnter={hoverAcordeon('favoritos')}
-      onMouseLeave={salirAcordeon('favoritos')}
     >
       <div
         onClick={toggleFavoritos}
@@ -446,13 +471,9 @@ export function DesktopSidebar({
     const Icon = ws.icon;
     const hubRoute = WORKSPACE_HUB_ROUTES[ws.id] || ws.items[0]?.path || '/dashboard';
     const isWsActive = ws.id === (workspace?.id ?? null) || location.pathname === hubRoute;
-    const isOpen = acordeonHover === ws.id || (openWorkspaces[ws.id] ?? isWsActive);
 
     // Sub-items del workspace
     const allWsItems = itemsVisiblesDe(ws);
-
-    const isExtensive = allWsItems.length > MAX_SIDEBAR_ITEMS;
-    const visibleSubItems = isExtensive ? allWsItems.slice(0, MAX_SIDEBAR_ITEMS) : allWsItems;
 
     if (!isExpanded) {
       return (
@@ -488,9 +509,10 @@ export function DesktopSidebar({
     return (
       <div
         key={ws.id}
+        data-ws-row={ws.id}
         className="space-y-0.5"
-        onMouseEnter={hoverAcordeon(ws.id)}
-        onMouseLeave={salirAcordeon(ws.id)}
+        onMouseEnter={abrirFlyout(ws)}
+        onMouseLeave={programarCierreFlyout}
       >
         {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
 
@@ -498,7 +520,7 @@ export function DesktopSidebar({
             El contenido también se abre solo mientras el cursor está encima. */}
         <div
           onClick={() => handleNav(hubRoute)}
-          aria-expanded={isOpen}
+          aria-expanded={flyout?.ws.id === ws.id}
           className={cn(
             'w-full flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-colors text-left relative group cursor-pointer',
             isWsActive
@@ -514,15 +536,16 @@ export function DesktopSidebar({
 
           {allWsItems.length > 0 && (
             <button
-              onClick={(e) => toggleAccordion(ws.id, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (flyout?.ws.id === ws.id && flyoutFijo) cerrarFlyoutAhora();
+                else { setFlyoutFijo(true); abrirFlyout(ws)(e); }
+              }}
               className="p-1 rounded-none text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
-              aria-label={isOpen ? `Colapsar ${ws.label}` : `Expandir ${ws.label}`}
+              aria-label={`Abrir el panel flotante de ${ws.label}`}
+              aria-expanded={flyout?.ws.id === ws.id && flyoutFijo}
             >
-              {isOpen ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           )}
 
@@ -530,23 +553,6 @@ export function DesktopSidebar({
             <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-accent" />
           )}
         </div>
-
-        {/* Sub-Items Expandidos */}
-        {isOpen && allWsItems.length > 0 && (
-          <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 dark:border-white/5 ml-4">
-            {visibleSubItems.map(item => renderSubItem(item))}
-
-            {isExtensive && (
-              <button
-                onClick={() => setPanelWorkspace(ws)}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-none text-[11px] font-semibold text-accent-ink hover:bg-accent-softer transition-colors text-left"
-              >
-                <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
-                <span>Ver todas ({allWsItems.length}) ▾</span>
-              </button>
-            )}
-          </div>
-        )}
       </div>
     );
   };
@@ -554,6 +560,7 @@ export function DesktopSidebar({
   return (
     <TooltipProvider delayDuration={200}>
       <div
+        ref={contenedorRef}
         className={cn(
           'hidden md:block shrink-0 relative transition-[width] duration-200 ease-out z-40 select-none',
           isPinned ? 'w-[264px]' : 'w-[72px]'
@@ -739,19 +746,69 @@ export function DesktopSidebar({
           </div>
         </aside>
 
-        {panelWorkspace && (
-          <NavigationPanel
-            workspace={panelWorkspace}
-            activeItem={_activeItem}
-            userRole={userRole}
-            isModuleVisible={isModuleVisible}
-            oficinaId={oficinaId}
-            isOpen={!!panelWorkspace}
-            onClose={() => setPanelWorkspace(null)}
-            badgeCounts={badgeCounts}
-          />
+        {/* ── PANEL FLOTANTE A LA DERECHA (prueba) ──
+            Muestra los módulos de la sección mientras el cursor está sobre ella,
+            sin abrir el acordeón hacia abajo ni recorrer los renglones de abajo. */}
+        {flyout && (
+          <div
+            role="menu"
+            aria-label={`Módulos de ${flyout.ws.label}`}
+            onMouseEnter={cancelarCierreFlyout}
+            onMouseLeave={programarCierreFlyout}
+            style={{ top: flyout.top, left: isExpanded ? 272 : 80, maxHeight: flyout.alto }}
+            className={cn(
+              'absolute z-50 w-[292px] overflow-y-auto',
+              'bg-surface-card dark:bg-[#111114] border border-soft shadow-e1',
+              'animate-in fade-in slide-in-from-left-1 duration-150'
+            )}
+          >
+            <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-soft">
+              <flyout.ws.icon className="w-4 h-4 shrink-0 text-accent-ink" />
+              <span className="flex-1 min-w-0 truncate text-[12px] font-semibold text-neutral-900 dark:text-white">
+                {flyout.ws.label}
+              </span>
+              <button
+                onClick={() => { handleNav(WORKSPACE_HUB_ROUTES[flyout.ws.id] || flyout.ws.items[0]?.path || '/dashboard'); cerrarFlyoutAhora(); }}
+                className="px-2 py-1 rounded-none text-[10.5px] font-semibold text-accent-ink hover:bg-accent-softer transition-colors"
+              >
+                Ver sección
+              </button>
+              <button
+                onClick={cerrarFlyoutAhora}
+                aria-label="Cerrar panel"
+                className="p-1 rounded-none text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/10 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="p-1.5">
+              {(() => {
+                const grupos = gruposVisiblesDe(flyout.ws);
+                const total = grupos.reduce((n, g) => n + g.items.length, 0);
+                if (total === 0) {
+                  return (
+                    <p className="px-2 py-3 text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                      Sin módulos disponibles.
+                    </p>
+                  );
+                }
+                return grupos.map(g => (
+                  <div key={g.id ?? '_sin_grupo'} className="mb-1 last:mb-0">
+                    {g.nombre && (
+                      <p className="px-2 pt-1.5 pb-1 movi-eyebrow !text-[10px] text-neutral-500 dark:text-white/45">
+                        {g.nombre}
+                      </p>
+                    )}
+                    {g.items.map(item => renderSubItem(item, `fly-${flyout.ws.id}-`))}
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
         )}
-      </div>
+
+        </div>
     </TooltipProvider>
   );
 }
